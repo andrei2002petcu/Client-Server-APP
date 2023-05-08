@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
         char buff[BUFFLEN];
         memset(buff, 0, BUFFLEN);
-        memset(packet_send.payload, 0, sizeof(struct packet));
+        //memset(packet_send.payload, 0, sizeof(struct packet));
 
         if (FD_ISSET(STDIN_FILENO, &fd_copy)) {
 

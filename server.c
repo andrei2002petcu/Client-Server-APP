@@ -69,8 +69,7 @@ int main(int argc, char **argv) {
         DIE (select(max_fd + 1, &fd_copy, NULL, NULL, NULL) < 0, "FAILURE: select");
 
         for (int i = 0; i <= max_fd; i++) {
-            char buff[BUFFLEN];
-            memset(buff, 0, BUFFLEN);
+            char buff[BUFFLEN] = {0};
             
             if (FD_ISSET(i, &fd_copy)) {
                          
@@ -137,7 +136,7 @@ int main(int argc, char **argv) {
                     //create new packet to send to clients (TCP)
                     struct tcp_packet packet_send = {0};
                     strcpy(packet_send.topic, packet_recv->topic);
-                    packet_send.topic[50] = '\0';
+                    //packet_send.topic[50] = '\0';
                     packet_send.port = htons(udp_servaddr.sin_port);
                     strcpy(packet_send.ip_addr, inet_ntoa(udp_servaddr.sin_addr));
 
@@ -212,6 +211,7 @@ int main(int argc, char **argv) {
                 }
                 else { //new command from TCP client
 
+                    memset(buff, 0, BUFFLEN);
                     ret = recv(i, buff, sizeof(struct packet), 0);
                     DIE (ret < 0, "FAILURE: recv");
                     

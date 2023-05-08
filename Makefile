@@ -1,13 +1,14 @@
-# Protocoale de comunicatii:
-# Laborator 8: Multiplexare
+# Protocoale de comunicatii
+# Laborator 7 - TCP
+# Echo Server
 # Makefile
 
-CFLAGS = -Wall -g -lm
+CFLAGS = -Wall -g -Werror -Wno-error=unused-variable
 
-# Portul pe care asculta serverul (de completat)
+# Portul pe care asculta serverul
 PORT = 8080
 
-# Adresa IP a serverului (de completat)
+# Adresa IP a serverului
 IP_SERVER = 127.0.0.1
 
 ID = C1
@@ -31,4 +32,4 @@ run_subscriber:
 	./subscriber $(ID) ${IP_SERVER} ${PORT}
 
 clean:
-	rm -f server subscriber
+	rm -rf server subscriber

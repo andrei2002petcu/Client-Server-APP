@@ -58,12 +58,7 @@ typedef struct client {
 //Structure for storing a packet that is sent to server (from TCP clients)
 typedef struct packet {
     struct topic topic;
-    uint8_t data_type;
     char req_type[50]; //type of request (subscribe, unsubscribe, exit)
-    char payload[1501];
-    
-    char ip_addr[16];
-    uint16_t port;
 }packet;
 
 #define BUFFLEN 256
