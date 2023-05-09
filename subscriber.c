@@ -10,6 +10,39 @@
 
 #include "helpers.h"
 
+int recv_all(int sockfd, void *buffer, size_t len) {
+
+    size_t bytes_received = 0;
+    size_t bytes_remaining = len;
+    char *buff = buffer;
+
+        while(bytes_remaining) {
+            int ret = recv(sockfd, buff, bytes_remaining, 0);
+            DIE (ret < 0, "FAILURE: recv");
+            bytes_received += ret;
+            bytes_remaining -= ret;
+            buff += ret;
+        }
+
+    return bytes_received;
+}
+
+int send_all(int sockfd, void *buffer, size_t len) {
+    size_t bytes_sent = 0;
+    size_t bytes_remaining = len;
+    char *buff = buffer;
+
+        while(bytes_remaining) {
+            int ret = send(sockfd, buff, bytes_remaining, 0);
+            DIE (ret < 0, "FAILURE: send");
+            bytes_sent += ret;
+            bytes_remaining -= ret;
+            buff += ret;
+        }
+
+    return bytes_sent;
+}
+
 int main(int argc, char *argv[]) {
 
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
@@ -35,7 +68,9 @@ int main(int argc, char *argv[]) {
     DIE (ret < 0, "FAILURE: TCP connect");
 
     //send ID to server
-    ret = send(sock_tcp, argv[1], strlen(argv[1]), 0);
+    char id[10] = {0};
+    strcpy(id, argv[1]);
+    ret = send_all(sock_tcp, id, 10);
     DIE (ret < 0, "FAILURE: TCP send");
     
     //init FD
@@ -45,21 +80,20 @@ int main(int argc, char *argv[]) {
     FD_SET(sock_tcp, &fd);
     FD_SET(STDIN_FILENO, &fd);
 
-    //packet to send to the server
-    struct packet packet_send;
-
     while(1) {
         fd_set fd_copy = fd;
         DIE (select(sock_tcp + 1, &fd_copy, NULL, NULL, NULL) < 0, "FAILURE: select");
 
         char buff[BUFFLEN];
         memset(buff, 0, BUFFLEN);
-        //memset(packet_send.payload, 0, sizeof(struct packet));
 
         if (FD_ISSET(STDIN_FILENO, &fd_copy)) {
 
             //read the command from stdin            
             fgets(buff, BUFFLEN - 1, stdin);
+
+            //packet to send to the server
+            struct packet packet_send = {0};
             
             if (strncmp(buff, "subscribe ", 10) == 0) {
                 
@@ -72,7 +106,7 @@ int main(int argc, char *argv[]) {
                 strcpy(packet_send.req_type, "subscribe");
 
                 //send the packet to server and print message
-                ret = send(sock_tcp, &packet_send, sizeof(struct packet), 0);
+                ret = send_all(sock_tcp, &packet_send, sizeof(struct packet));
                 DIE (ret < 0, "FAILURE: TCP send");
                 printf("Subscribed to topic.\n");
             }
@@ -85,14 +119,14 @@ int main(int argc, char *argv[]) {
                 strcpy(packet_send.req_type, "unsubscribe");
 
                 //send the packet to server and print message
-                ret = send(sock_tcp, &packet_send, sizeof(struct packet), 0);
+                ret = send_all(sock_tcp, &packet_send, sizeof(struct packet));
                 DIE (ret < 0, "FAILURE: TCP send");
                 printf("Unsubscribed from topic.\n");
             }
             else if (strncmp(buff, "exit", 4) == 0) {
                 //send exit type message to server
                 strcpy(packet_send.req_type, "exit");
-                ret = send(sock_tcp, &packet_send, sizeof(struct packet), 0);
+                ret = send_all(sock_tcp, &packet_send, sizeof(struct packet));
                 DIE (ret < 0, "FAILURE: TCP send");
                 break;
             }
@@ -104,9 +138,13 @@ int main(int argc, char *argv[]) {
             //received message from server
             
             struct tcp_packet packet_recv = {0};
-            ret = recv(sock_tcp, &packet_recv, sizeof(struct tcp_packet), 0);
+            ret = recv_all(sock_tcp, &packet_recv, sizeof(struct tcp_packet));
             DIE (ret < 0, "FAILURE: TCP recv");
             if(ret == 0)
+                break;
+
+            //check if exit type message
+            if (strncmp(packet_recv.type, "exit", 4) == 0)
                 break;
 
             //print message info

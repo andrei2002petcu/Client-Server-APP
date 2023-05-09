@@ -6,7 +6,7 @@
 CFLAGS = -Wall -g -Werror -Wno-error=unused-variable
 
 # Portul pe care asculta serverul
-PORT = 8080
+PORT = 12345
 
 # Adresa IP a serverului
 IP_SERVER = 127.0.0.1

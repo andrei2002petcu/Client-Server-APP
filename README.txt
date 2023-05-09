@@ -4,9 +4,9 @@
 
 Implementarea server-ului se afla in fisierul server.c, iar cea a clientului de
 tip TCP in fisierul subscriber.c. In helper.h se afla functiile ajutatoare si
-structurile de data folosite in implementare. Anumite functii si structuri de
-date au fost preluate din laboratorul de PCOM (Macro-ul de verificare erori si
-schelet pentru structuri). 
+structurile de date folosite in implementare. Anumite functii si structuri de
+date au fost preluate din laboratorul de PCOM (Macro-ul de verificare erori,
+schelet pentru functiile de recv_all/send_all si structuri). 
 
 HELPERS.H
     -am folosit cate o structura pentru ficare tip de socket. Acestea contin

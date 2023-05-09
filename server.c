@@ -10,6 +10,39 @@
 
 #include "helpers.h"
 
+int recv_all(int sockfd, void *buffer, size_t len) {
+
+    size_t bytes_received = 0;
+    size_t bytes_remaining = len;
+    char *buff = buffer;
+
+        while(bytes_remaining) {
+            int ret = recv(sockfd, buff, bytes_remaining, 0);
+            DIE (ret < 0, "FAILURE: recv");
+            bytes_received += ret;
+            bytes_remaining -= ret;
+            buff += ret;
+        }
+
+    return bytes_received;
+}
+
+int send_all(int sockfd, void *buffer, size_t len) {
+    size_t bytes_sent = 0;
+    size_t bytes_remaining = len;
+    char *buff = buffer;
+
+        while(bytes_remaining) {
+            int ret = send(sockfd, buff, bytes_remaining, 0);
+            DIE (ret < 0, "FAILURE: send");
+            bytes_sent += ret;
+            bytes_remaining -= ret;
+            buff += ret;
+        }
+
+    return bytes_sent;
+}
+
 int main(int argc, char **argv) {
 
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
@@ -79,7 +112,8 @@ int main(int argc, char **argv) {
                     DIE (newsock < 0, "FAILURE: accept");
                     
                     //take client id
-                    recv(newsock, buff, 10, 0);
+                    ret = recv_all(newsock, buff, 10);
+                    DIE (ret < 0, "FAILURE: recv");
 
                     //search for client in the clients array
                     int index = -1, status;
@@ -101,13 +135,21 @@ int main(int argc, char **argv) {
 
                         //send all stored messages
                         for (int j = 0; j < clients[index].stored_packets_no; j++) {
-                            send(clients[index].socket, &clients[index].stored_packets[j], sizeof(struct tcp_packet), 0);
+                            ret = send_all(clients[index].socket, &clients[index].stored_packets[j], sizeof(struct tcp_packet));
+                            DIE (ret < 0, "FAILURE: send");
                         }
                     }
                     //if client is connected and online
                     else if (index != -1 && status == 1) {
-                        printf("Client %s already connected.\n", clients[index].id);
+
+                        //send exit message for client and close socket
+                        struct tcp_packet send_packet = {0};
+                        strcpy(send_packet.type, "exit");
+                        strcpy(send_packet.payload, "ID already in use -> exit");
+                        ret = send_all(newsock, &send_packet, sizeof(struct tcp_packet));
+                        DIE (ret < 0, "FAILURE: send");
                         close(newsock);
+                        printf("Client %s already connected.\n", clients[index].id);
                     }
                     //if client is not connected
                     else if (index == -1) {
@@ -136,7 +178,6 @@ int main(int argc, char **argv) {
                     //create new packet to send to clients (TCP)
                     struct tcp_packet packet_send = {0};
                     strcpy(packet_send.topic, packet_recv->topic);
-                    //packet_send.topic[50] = '\0';
                     packet_send.port = htons(udp_servaddr.sin_port);
                     strcpy(packet_send.ip_addr, inet_ntoa(udp_servaddr.sin_addr));
 
@@ -187,7 +228,7 @@ int main(int argc, char **argv) {
                                 
                                 //if client is online send message
                                 if(clients[j].online == 1) {
-                                    ret = send(clients[j].socket, &packet_send, sizeof(struct tcp_packet), 0);
+                                    ret = send_all(clients[j].socket, &packet_send, sizeof(struct tcp_packet));
                                     DIE (ret < 0, "FAILURE: send");
                                 }
                                 // else store message
@@ -205,6 +246,21 @@ int main(int argc, char **argv) {
                     //read command and check if server need to shutdown
                     fgets(buff, BUFFLEN - 1, stdin);
                     if (strncmp(buff, "exit", 4) == 0) {
+                        
+                        for (int j = 5; j <= max_fd; j++)
+                            if (clients[j].online == 1) {
+                                //send exit message for clients
+                                struct tcp_packet send_packet = {0};
+                                strcpy(send_packet.type, "exit");
+                                strcpy(send_packet.payload, "Server shutting down -> exit");
+                                ret = send_all(clients[j].socket, &send_packet, sizeof(struct tcp_packet));
+                                DIE (ret < 0, "FAILURE: send");
+                            }
+                        //close all the connections
+                        for(int i = 3; i <= max_fd; i++)
+                            if (FD_ISSET(i, &fd))
+                                close(i);
+
                         server_online = 0;
                         break;
                     }
@@ -212,7 +268,7 @@ int main(int argc, char **argv) {
                 else { //new command from TCP client
 
                     memset(buff, 0, BUFFLEN);
-                    ret = recv(i, buff, sizeof(struct packet), 0);
+                    ret = recv_all(i, buff, sizeof(struct packet));
                     DIE (ret < 0, "FAILURE: recv");
                     
                     //get the client that sent the message
@@ -283,11 +339,6 @@ int main(int argc, char **argv) {
             }
         }
     }
-    
-    //close all the connections
-    for(int i = 3; i <= max_fd; i++)
-        if (FD_ISSET(i, &fd))
-            close(i);
 
     return 0;
 }
